@@ -1,6 +1,6 @@
 use gio::prelude::*;
-use gtk::prelude::*;
 use glib::{signal_handler_block, signal_handler_unblock, signal_stop_emission_by_name};
+use gtk::prelude::*;
 
 use std::env::args;
 
@@ -33,7 +33,7 @@ struct DSPState {
 }
 
 thread_local!(
-    static GLOBAL:RefCell<Option<(Ui, DProc, DSPState)>> = RefCell::new(None);
+    static GLOBAL: RefCell<Option<(Ui, DProc, DSPState)>> = RefCell::new(None);
 );
 
 fn ui_init() {
@@ -78,16 +78,19 @@ fn ui_init() {
         (StatusContext::DataOperation, context_id_data_ops),
         (StatusContext::DSPOperation, context_id_dsp_ops),
     ]
-        .iter()
-        .cloned()
-        .collect();
+    .iter()
+    .cloned()
+    .collect();
 
-    let vbox =gtk::Box::new(gtk::Orientation::Vertical, 0);
+    let vbox = gtk::Box::new(gtk::Orientation::Vertical, 0);
     vbox.pack_start(&toolbar, false, false, 0);
     vbox.pack_start(&status_bar, false, false, 0);
     vbox.pack_start(&display_area, false, false, 0);
     vbox.pack_start(&scrolled_text_view, true, true, 0);
     window.add(&vbox);
+
+    // Make sure all desired widgets are visible.
+    window.show_all();
 
     // -------------------
     let ui = Ui {
@@ -102,7 +105,9 @@ fn ui_init() {
     };
 
     let dspstate = DSPState {
-        waveform: vec![0.0, 0.0, 0.2, 0.4, 0.8, 1.0, 0.6, 0.2, 0.16, 0.1, 0.04, 0.0, 0.0],
+        waveform: vec![
+            0.0, 0.0, 0.2, 0.4, 0.8, 1.0, 0.6, 0.2, 0.16, 0.1, 0.04, 0.0, 0.0,
+        ],
         processed_data: Vec::new(),
     };
 
@@ -122,4 +127,22 @@ fn receive() -> glib::Continue {
 }
 
 fn main() {
+    if gtk::init().is_err() {
+        println!("Failed to initialize GTK.");
+        return;
+    }
+
+    ui_init();
+    GLOBAL.with(|global| {
+        if let Some((ref ui, _, _)) = *global.borrow() {
+            // Set deleting the window to close the entire application
+            ui.window.connect_delete_event(|_, _| {
+                gtk::main_quit();
+                Inhibit(false)
+            });
+        }
+    });
+
+    // Start our GUI main loop
+    gtk::main();
 }
