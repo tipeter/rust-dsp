@@ -1,6 +1,7 @@
 use gio::prelude::*;
 use glib::{signal_handler_block, signal_handler_unblock, signal_stop_emission_by_name};
 use gtk::prelude::*;
+use gdk::prelude::*;
 
 use std::env::args;
 
@@ -91,6 +92,15 @@ fn ui_init() {
 
     // Make sure all desired widgets are visible.
     window.show_all();
+
+    // Set CSS styles for the entire application.
+    let css_provider = gtk::CssProvider::new();
+    let display = gdk::Display::get_default().expect("Couldn't open default GDK display");
+    let screen = display.get_default_screen();
+    gtk::StyleContext::add_provider_for_screen(&screen,
+                                               &css_provider,
+                                               gtk::STYLE_PROVIDER_PRIORITY_APPLICATION);
+    css_provider.load_from_path("resources/style.css").expect("Failed to load CSS stylesheet");
 
     // -------------------
     let ui = Ui {
