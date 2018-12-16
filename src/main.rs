@@ -85,9 +85,9 @@ fn ui_init() {
 
     let vbox = gtk::Box::new(gtk::Orientation::Vertical, 0);
     vbox.pack_start(&toolbar, false, false, 0);
-    vbox.pack_start(&status_bar, false, false, 0);
-    vbox.pack_start(&display_area, false, false, 0);
+    vbox.pack_start(&display_area, true, true, 0);
     vbox.pack_start(&scrolled_text_view, true, true, 0);
+    vbox.pack_start(&status_bar, false, false, 0);
     window.add(&vbox);
 
     // Make sure all desired widgets are visible.
