@@ -39,9 +39,11 @@ impl DProc {
                     Ok(DProcCommand::DoProcessing) => {
 
                     }
-                    Err(TryRecvError::Empty) |
+                    Err(TryRecvError::Empty) => {
+
+                    }
                     Err(TryRecvError::Disconnected) => {
-                        println!("Receiver error:");
+                        println!("Error: receiver disconnected!");
                     }
                 }
                 thread::sleep(Duration::from_millis(10u64));

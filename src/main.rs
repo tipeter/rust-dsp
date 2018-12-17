@@ -125,7 +125,18 @@ fn ui_init() {
             if s.get_active() {
                 println!("Load button activated!");
                 GLOBAL.with(|global| {
-                    if let Some((ref ui, ref dproc, ref dspstate)) = *global.borrow() {
+                    // Deconstructs ui, dproc as references
+                    // Deconstructs dspstate as mutable reference
+                    if let Some((ref ui, ref dproc, ref mut dspstate)) = *global.borrow_mut() {
+
+                        println!("dspstate in 'connect_clicked': {:p}", dspstate as *const DSPState);
+
+                        dspstate.waveform = vec![
+                            0.0, 0.0, 0.2, 0.4, 0.8, 1.0, 0.6, 0.2, 0.16, 0.1, 0.04, 0.0, 0.0,
+                        ];
+
+                        println!("address of dspstate.waveform: {:p}", &(dspstate.waveform) as *const Vec<f64>);
+
                         match dproc.send_data_cmd(&dspstate.waveform) {
                             Err(GeneralError::SendError(cmd)) => {
                                 println!("Send error! {:?}", cmd);
@@ -167,12 +178,16 @@ fn ui_init() {
         status_bar_cmap,
     };
 
-    let dspstate = DSPState {
-        waveform: vec![
-            0.0, 0.0, 0.2, 0.4, 0.8, 1.0, 0.6, 0.2, 0.16, 0.1, 0.04, 0.0, 0.0,
-        ],
+    let mut dspstate = DSPState {
+        waveform: Vec::new(),
         processed_data: Vec::new(),
     };
+
+    println!("dspstate in 'ui_init': {:p}", &dspstate as *const DSPState);
+    {
+        let mut data = &dspstate;
+        println!("dspstate in 'ui_init': {:p}", data as *const DSPState);
+    }
 
     GLOBAL.with(move |global| {
         *global.borrow_mut() = Some((
@@ -182,6 +197,13 @@ fn ui_init() {
             }),
             dspstate,
         ));
+    });
+
+    GLOBAL.with(|global| {
+        if let Some((ref ui, ref dproc, ref dspstate)) = *global.borrow_mut() {
+            println!("dspstate in 'GLOBAL': {:p}", dspstate);
+            println!("address of dspstate.waveform: {:p}", &(dspstate.waveform) as *const Vec<f64>);
+        }
     });
 }
 
