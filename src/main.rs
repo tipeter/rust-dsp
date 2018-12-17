@@ -9,7 +9,7 @@ use std::cell::RefCell;
 use std::collections::HashMap;
 
 mod dproc;
-use self::dproc::DProc;
+use self::dproc::*;
 
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
 enum StatusContext {
@@ -19,7 +19,10 @@ enum StatusContext {
 
 struct Ui {
     window: gtk::Window,
+    load_button: gtk::ToggleButton,
+    load_button_clicked_signal: glib::SignalHandlerId,
     process_button: gtk::ToggleButton,
+    process_button_clicked_signal: glib::SignalHandlerId,
     display_area: gtk::DrawingArea,
     text_buffer: gtk::TextBuffer,
     text_view: gtk::TextView,
@@ -47,9 +50,22 @@ fn ui_init() {
     let toolbar = gtk::Toolbar::new();
     toolbar.set_show_arrow(false);
 
+    // Create load button
+    let load_button = gtk::ToggleButton::new();
+    load_button.set_tooltip_text("Load data");
+    let load_image =  gtk::Image::new_from_file("resources/file-download.png");
+    load_button.set_image(&load_image);
+//    load_button.set_sensitive(false);
+    let load_button_container = gtk::ToolItem::new();
+    load_button_container.add(&load_button);
+    toolbar.add(&load_button_container);
+
     // Create process button
     let process_button = gtk::ToggleButton::new();
     process_button.set_tooltip_text("Process data");
+    let process_image =  gtk::Image::new_from_file("resources/chart-bell-curve.png");
+    process_button.set_image(&process_image);
+    process_button.set_sensitive(false);
     let process_button_container = gtk::ToolItem::new();
     process_button_container.add(&process_button);
     toolbar.add(&process_button_container);
@@ -102,10 +118,47 @@ fn ui_init() {
                                                gtk::STYLE_PROVIDER_PRIORITY_APPLICATION);
     css_provider.load_from_path("resources/style.css").expect("Failed to load CSS stylesheet");
 
+    // Connect signals
+    let load_button_clicked_signal = load_button.connect_clicked(
+        move | s | {
+            println!("Load button clicked!");
+            if s.get_active() {
+                println!("Load button activated!");
+                GLOBAL.with(|global| {
+                    if let Some((ref ui, ref dproc, ref dspstate)) = *global.borrow() {
+                        match dproc.send_data_cmd(&dspstate.waveform) {
+                            Err(GeneralError::SendError(cmd)) => {
+                                println!("Send error! {:?}", cmd);
+                            },
+                            Ok(_) => {
+                                println!("Data sending OK!");
+                            }
+                        }
+                    }
+                })
+            } else {
+                println!("Load button already activated, deactivating!");
+            }
+        }
+    );
+
+    let process_button_clicked_signal = process_button.connect_clicked(
+        move | s | {
+            if s.get_active() {
+
+            } else {
+
+            }
+        }
+    );
+
     // -------------------
     let ui = Ui {
         window,
+        load_button,
+        load_button_clicked_signal,
         process_button,
+        process_button_clicked_signal,
         display_area,
         text_buffer,
         text_view,
