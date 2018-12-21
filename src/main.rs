@@ -1,7 +1,7 @@
+use gdk::prelude::*;
 use gio::prelude::*;
 use glib::{signal_handler_block, signal_handler_unblock, signal_stop_emission_by_name};
 use gtk::prelude::*;
-use gdk::prelude::*;
 
 use std::env::args;
 
@@ -53,9 +53,9 @@ fn ui_init() {
     // Create load button
     let load_button = gtk::ToggleButton::new();
     load_button.set_tooltip_text("Load data");
-    let load_image =  gtk::Image::new_from_file("resources/file-download.png");
+    let load_image = gtk::Image::new_from_file("resources/file-download.png");
     load_button.set_image(&load_image);
-//    load_button.set_sensitive(false);
+    //    load_button.set_sensitive(false);
     let load_button_container = gtk::ToolItem::new();
     load_button_container.add(&load_button);
     toolbar.add(&load_button_container);
@@ -63,7 +63,7 @@ fn ui_init() {
     // Create process button
     let process_button = gtk::ToggleButton::new();
     process_button.set_tooltip_text("Process data");
-    let process_image =  gtk::Image::new_from_file("resources/chart-bell-curve.png");
+    let process_image = gtk::Image::new_from_file("resources/chart-bell-curve.png");
     process_button.set_image(&process_image);
     process_button.set_sensitive(false);
     let process_button_container = gtk::ToolItem::new();
@@ -113,55 +113,87 @@ fn ui_init() {
     let css_provider = gtk::CssProvider::new();
     let display = gdk::Display::get_default().expect("Couldn't open default GDK display");
     let screen = display.get_default_screen();
-    gtk::StyleContext::add_provider_for_screen(&screen,
-                                               &css_provider,
-                                               gtk::STYLE_PROVIDER_PRIORITY_APPLICATION);
-    css_provider.load_from_path("resources/style.css").expect("Failed to load CSS stylesheet");
+    gtk::StyleContext::add_provider_for_screen(
+        &screen,
+        &css_provider,
+        gtk::STYLE_PROVIDER_PRIORITY_APPLICATION,
+    );
+    css_provider
+        .load_from_path("resources/style.css")
+        .expect("Failed to load CSS stylesheet");
 
     // Connect signals
-    let load_button_clicked_signal = load_button.connect_clicked(
-        move | s | {
-            println!("Load button clicked!");
-            if s.get_active() {
-                println!("Load button activated!");
-                GLOBAL.with(|global| {
-                    // Deconstructs ui, dproc as references
-                    // Deconstructs dspstate as mutable reference
-                    if let Some((ref ui, ref dproc, ref mut dspstate)) = *global.borrow_mut() {
+    display_area.connect_draw(|w, c| {
+        GLOBAL.with(|global| {
+            if let Some((ref ui, ref dproc, ref dspstate)) = *global.borrow() {
+                let style_context = w.get_style_context().unwrap();
+                let foreground = style_context.get_color(w.get_state_flags());
+                let mut background = foreground.clone();
+                background.alpha *= 0.3;
+                let background = background;
+                let width = w.get_allocated_width() as f64;
+                let height = w.get_allocated_height() as f64;
+                let two_pi = 2.0 * std::f64::consts::PI;
 
-                        println!("dspstate in 'connect_clicked': {:p}", dspstate as *const DSPState);
+                println!("Waveform: {}", dspstate.waveform.len());
 
-                        dspstate.waveform = vec![
-                            0.0, 0.0, 0.2, 0.4, 0.8, 1.0, 0.6, 0.2, 0.16, 0.1, 0.04, 0.0, 0.0,
-                        ];
+                let mut x = 0.0f64;
+                for y in &dspstate.waveform {
+                    c.line_to(x, *y * 10.0);
+                    x += 10.0;
+                }
+                c.stroke();
+            } else {
 
-                        println!("address of dspstate.waveform: {:p}", &(dspstate.waveform) as *const Vec<f64>);
+            }
+        });
+        Inhibit(false)
+    });
 
-                        match dproc.send_data_cmd(&dspstate.waveform) {
-                            Err(GeneralError::SendError(cmd)) => {
-                                println!("Send error! {:?}", cmd);
-                            },
-                            Ok(_) => {
-                                println!("Data sending OK!");
-                            }
+    let load_button_clicked_signal = load_button.connect_clicked(move |s| {
+        println!("Load button clicked!");
+        if s.get_active() {
+            println!("Load button activated!");
+            GLOBAL.with(|global| {
+                // Deconstructs ui, dproc as references
+                // Deconstructs dspstate as mutable reference
+                if let Some((ref ui, ref dproc, ref mut dspstate)) = *global.borrow_mut() {
+                    println!(
+                        "dspstate in 'connect_clicked': {:p}",
+                        dspstate as *const DSPState
+                    );
+
+                    dspstate.waveform = vec![
+                        0.0, 0.0, 0.2, 0.4, 0.8, 1.0, 0.6, 0.2, 0.16, 0.1, 0.04, 0.0, 0.0,
+                    ];
+
+                    println!(
+                        "address of dspstate.waveform: {:p}",
+                        &(dspstate.waveform) as *const Vec<f64>
+                    );
+
+                    match dproc.send_data_cmd(&dspstate.waveform) {
+                        Err(GeneralError::SendError(cmd)) => {
+                            println!("Send error! {:?}", cmd);
+                        }
+                        Ok(_) => {
+                            println!("Data sending OK!");
                         }
                     }
-                })
-            } else {
-                println!("Load button already activated, deactivating!");
-            }
+                }
+            })
+        } else {
+            println!("Load button already activated, deactivating!");
         }
-    );
+    });
 
-    let process_button_clicked_signal = process_button.connect_clicked(
-        move | s | {
-            if s.get_active() {
+    let process_button_clicked_signal = process_button.connect_clicked(move |s| {
+        if s.get_active() {
 
-            } else {
+        } else {
 
-            }
         }
-    );
+    });
 
     // -------------------
     let ui = Ui {
@@ -202,7 +234,10 @@ fn ui_init() {
     GLOBAL.with(|global| {
         if let Some((ref ui, ref dproc, ref dspstate)) = *global.borrow_mut() {
             println!("dspstate in 'GLOBAL': {:p}", dspstate);
-            println!("address of dspstate.waveform: {:p}", &(dspstate.waveform) as *const Vec<f64>);
+            println!(
+                "address of dspstate.waveform: {:p}",
+                &(dspstate.waveform) as *const Vec<f64>
+            );
         }
     });
 }

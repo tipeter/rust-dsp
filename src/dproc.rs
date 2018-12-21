@@ -30,24 +30,18 @@ impl DProc {
         let (from_dproc_tx, from_dproc_rx) = channel();
         let (to_dproc_tx, to_dproc_rx) = channel();
 
-        thread::spawn( move || {
-            loop {
-                match to_dproc_rx.try_recv() {
-                    Ok(DProcCommand::SendData(data)) => {
-                        println!("Command received: {:?}", data);
-                    }
-                    Ok(DProcCommand::DoProcessing) => {
-
-                    }
-                    Err(TryRecvError::Empty) => {
-
-                    }
-                    Err(TryRecvError::Disconnected) => {
-                        println!("Error: receiver disconnected!");
-                    }
+        thread::spawn(move || loop {
+            match to_dproc_rx.try_recv() {
+                Ok(DProcCommand::SendData(data)) => {
+                    println!("Command received: {:?}", data);
                 }
-                thread::sleep(Duration::from_millis(10u64));
+                Ok(DProcCommand::DoProcessing) => {}
+                Err(TryRecvError::Empty) => {}
+                Err(TryRecvError::Disconnected) => {
+                    println!("Error: receiver disconnected!");
+                }
             }
+            thread::sleep(Duration::from_millis(10u64));
         });
 
         DProc {
@@ -58,11 +52,8 @@ impl DProc {
 
     pub fn send_data_cmd(&self, data: &Vec<f64>) -> Result<(), GeneralError> {
         let tx = &self.to_dproc_tx;
-        tx.send(DProcCommand::SendData(data.clone())).map_err(
-            | e | {
-                GeneralError::SendError(e.0)
-            }
-        )?;
+        tx.send(DProcCommand::SendData(data.clone()))
+            .map_err(|e| GeneralError::SendError(e.0))?;
         Ok(())
     }
 }
